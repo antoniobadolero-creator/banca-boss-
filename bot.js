@@ -13,28 +13,34 @@ const client = new Client({
 });
 
 // ── CONFIGURARE ────────────────────────────────
-const COOLDOWN_SEC = 7000;   // durata totala cooldown
-const WARN_SEC     = 1300;   // cat timp inainte sa anunte
+const DEFAULT_COOLDOWN_SEC = 7000;  // durata default daca nu specifici
+const WARN_SEC             = 1300;  // cat timp inainte sa anunte
 
 const BANKS = [
   { value: 'highway',  name: '🛣️ Highway Bank'  },
   { value: 'alta',     name: '🏙️ Alta Bank'      },
-  { value: 'winghood', name: '🦅 Winghood Bank'  },
+  { value: 'vinewood', name: '🎬 Vinewood Bank'  },
   { value: 'desert',   name: '🏜️ Desert Bank'    },
+  { value: 'pacific',  name: '🏦 Pacific Bank'   },
+  { value: 'biju',     name: '💎 Biju Bank'      },
 ];
 
 const BANK_COLORS = {
   highway:  0x3498db,
   alta:     0x2ecc71,
-  winghood: 0x9b59b6,
+  vinewood: 0x9b59b6,
   desert:   0xe67e22,
+  pacific:  0x1abc9c,
+  biju:     0xf1c40f,
 };
 
 const BANK_EMOJIS = {
   highway:  '🛣️',
   alta:     '🏙️',
-  winghood: '🦅',
+  vinewood: '🎬',
   desert:   '🏜️',
+  pacific:  '🏦',
+  biju:     '💎',
 };
 
 // Timere active in memorie
@@ -54,12 +60,19 @@ function fmt(sec) {
 const commands = [
   new SlashCommandBuilder()
     .setName('banca')
-    .setDescription(`Porneste timerul pentru o banca (${fmt(COOLDOWN_SEC)} cooldown)`)
+    .setDescription('Porneste timerul pentru o banca')
     .addStringOption(opt =>
       opt.setName('nume')
         .setDescription('Alege banca')
         .setRequired(true)
         .addChoices(...BANKS.map(b => ({ name: b.name, value: b.value })))
+    )
+    .addIntegerOption(opt =>
+      opt.setName('secunde')
+        .setDescription('Secunde custom (optional, default: 7000)')
+        .setRequired(false)
+        .setMinValue(10)
+        .setMaxValue(86400)
     ),
 
   new SlashCommandBuilder()
@@ -105,9 +118,11 @@ client.on('interactionCreate', async (interaction) => {
 
   // /banca
   if (commandName === 'banca') {
-    const bank     = interaction.options.getString('nume');
-    const bankObj  = BANKS.find(b => b.value === bank);
-    const emoji    = BANK_EMOJIS[bank];
+    const bank       = interaction.options.getString('nume');
+    const customSec  = interaction.options.getInteger('secunde');
+    const cooldown   = customSec || DEFAULT_COOLDOWN_SEC;
+    const bankObj    = BANKS.find(b => b.value === bank);
+    const emoji      = BANK_EMOJIS[bank];
 
     // Cauta canalul #banci
     const channel = interaction.guild.channels.cache.find(
@@ -127,8 +142,10 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     const now     = Date.now();
-    const endTime = now + COOLDOWN_SEC * 1000;
-    const warnAt  = endTime - WARN_SEC * 1000;
+    const endTime = now + cooldown * 1000;
+    // Alerta la 1300 sec inainte SAU la jumatate daca timerul e mai mic de 1300
+    const warnSec = cooldown > WARN_SEC ? WARN_SEC : Math.floor(cooldown / 2);
+    const warnAt  = endTime - warnSec * 1000;
 
     // Timer avertisment
     const msWarn = warnAt - Date.now();
@@ -137,8 +154,8 @@ client.on('interactionCreate', async (interaction) => {
       timerWarn = setTimeout(async () => {
         const embed = new EmbedBuilder()
           .setColor(0xf39c12)
-          .setTitle(`⚠️ ${bankObj.name} — ${fmt(WARN_SEC)} RAMASE!`)
-          .setDescription(`**${bankObj.name}** se va da in **${fmt(WARN_SEC)}**!\nPregatiti echipele! 🚔`)
+          .setTitle(`⚠️ ${bankObj.name} — ${fmt(warnSec)} RAMASE!`)
+          .setDescription(`**${bankObj.name}** se va da in **${fmt(warnSec)}**!\nPregatiti echipele! 🚔`)
           .addFields({ name: '⏰ Se da la ora', value: `<t:${Math.floor(endTime / 1000)}:T>`, inline: true })
           .setFooter({ text: 'FiveM Bank Timer' })
           .setTimestamp();
@@ -164,7 +181,7 @@ client.on('interactionCreate', async (interaction) => {
     const confirm = new EmbedBuilder()
       .setColor(BANK_COLORS[bank])
       .setTitle(`${emoji} Timer pornit — ${bankObj.name}`)
-      .setDescription(`Cooldown: **${fmt(COOLDOWN_SEC)}**\nAlerta @everyone la: **${fmt(WARN_SEC)}** ramase`)
+      .setDescription(`Cooldown: **${fmt(cooldown)}**\nAlerta @everyone la: **${fmt(warnSec)}** ramase`)
       .addFields(
         { name: '⏱️ Se da la', value: `<t:${Math.floor(endTime / 1000)}:T>`, inline: true },
         { name: '⚠️ Alerta la', value: `<t:${Math.floor(warnAt / 1000)}:T>`, inline: true },
