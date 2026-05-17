@@ -21,6 +21,7 @@ const BANKS = [
   { value: 'alta',     name: '🏙️ Alta Bank'      },
   { value: 'vinewood', name: '🎬 Vinewood Bank'  },
   { value: 'desert',   name: '🏜️ Desert Bank'    },
+  { value: 'blaine',     name: '🏜️Blaine bank'      },
   { value: 'pacific',  name: '🏦 Pacific Bank'   },
   { value: 'biju',     name: '💎 Biju Bank'      },
 ];
